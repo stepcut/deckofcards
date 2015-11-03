@@ -1,5 +1,5 @@
-tjakway
-asks\](https://www.reddit.com/r/haskell/comments/3r8x5m/best\_way\_to\_model\_a\_deck\_of\_cards/),
+[tjakway
+asks](https://www.reddit.com/r/haskell/comments/3r8x5m/best_way_to_model_a_deck_of_cards/),
 "\[What is the\] best way to model a deck of cards?"
 
 This is an excellent question. For the sake of simplicity, let's make a
