@@ -1,8 +1,8 @@
-[tjakway
-asks](https://www.reddit.com/r/haskell/comments/3r8x5m/best_way_to_model_a_deck_of_cards/),
+tjakway
+asks\](https://www.reddit.com/r/haskell/comments/3r8x5m/best\_way\_to\_model\_a\_deck\_of\_cards/),
 "\[What is the\] best way to model a deck of cards?"
 
-This is an excellent question. For the sake of simplicity, lets make a
+This is an excellent question. For the sake of simplicity, let's make a
 few simplifications:
 
     1. Aces high
@@ -19,7 +19,7 @@ A deck of cards has several important properties:
 
 Clearly the 'best' model is going to enforce these properties.
 
-It is clear that some properties can be derived some others. For
+It is clear that some properties can be derived from the others. For
 example, in order for 2, 3, and 4 to all be true, 5 must be true.
 
 In order to enforce these properties, we need to make sure they are
@@ -60,12 +60,15 @@ card:
 ------------------------------------------------------------------------
 
 -- | card ranks, with Aces high
-data Rank = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten | Jack | Queen | King | Ace
+data Rank
+    = Two | Three | Four | Five | Six | Seven | Eight | Nine | Ten
+    | Jack | Queen | King | Ace
    deriving (Eq, Ord, Read, Show, Enum)
 ```
 
 We automatically derive `Ord` and `Enum` instances which assume Aces
-high. A `newtype` could be used to change the sort order if needed.
+high. A `newtype` could be used to change the sort order if needed,
+though other changes would be required.
 
 One of the `LANGUAGE` pragmas we enabled above is `DataKinds`. As
 normal, the above `data` declaration creates a type construction and a
@@ -81,16 +84,16 @@ additional type constructors and a new kind:
 
     Rank          -- the kind `Rank`
     Two :: Rank   -- type 'Two' with kind 'Rank'
-    Three :: Rank -- ^ type 'Three' with kind 'Rank'
+    Three :: Rank -- type 'Three' with kind 'Rank'
 
 There are some occasions where the newly created types can result in
-ambigous type errors, so there are also alias which prefix the types
+ambigous type errors, so there are also aliases which prefix the types
 with a single quote:
 
     'Two :: Rank   -- type 'Two' with kind 'Rank'
-    'Three :: Rank -- ^ type 'Three' with kind 'Rank'
+    'Three :: Rank -- type 'Three' with kind 'Rank'
 
-Sometimes we want to convert a 'type', like 'Two' to the data value of
+Sometimes we want to convert a `type`, like `Two` to the data value of
 the same name. We can do that by creating a type class:
 
 ``` {.sourceCode .literate .haskell}
@@ -144,14 +147,14 @@ in asecending order:
 
 ``` {.sourceCode .literate .haskell}
 -- | all the card ranks
-type Ranks = '[Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King, Ace]
+type Ranks = '[ Two, Three, Four, Five, Six, Seven, Eight, Nine
+              , Ten, Jack, Queen, King, Ace]
 ```
 
-Note that thet list is `'[]` instead of the typical `[]`. That is
-because we are using the promoted list value that `DataKinds`
-introduces.
+Note that the list is `'[]` instead of the typical `[]`. That is because
+we are using the promoted list value that `DataKinds` introduces.
 
-Next we have a little helper function which gives as a `Proxy` value
+Next we have a little helper function which gives us a `Proxy` value
 with all the `Ranks`.
 
 ``` {.sourceCode .literate .haskell}
@@ -160,14 +163,14 @@ ranks :: Proxy Ranks
 ranks = Proxy
 ```
 
-Next we do the exact same for the Suits
+Next we do the exact same for the `Suits`
 
 ``` {.sourceCode .literate .haskell}
 ------------------------------------------------------------------------
 --  Suit
 ------------------------------------------------------------------------
 
--- | Suit - sorted low to high if you are playing Bridge
+-- | Suit - sorted low to high
 data Suit = Clubs | Diamonds | Hearts | Spades
   deriving (Eq, Ord, Read, Show, Enum)
 
@@ -209,6 +212,9 @@ instance Show (Card rank suit) where
 `MkCard` is a nullary constructor. It does not take any arguments -- the
 `Rank` and `Suit` appear only in the type-level.
 
+Note that because the kind is `Rank -> Suit -> *` and not `* -> * -> *`
+types like `Card Int Char` are not valid.
+
 If we have `Rank` and `Suit` `Proxy` values we can use this helper
 function to construct the `Card`:
 
@@ -227,7 +233,7 @@ showCard :: forall rank suit. (RankVal rank, SuitVal suit) => Card rank suit -> 
 showCard _ = showRank (Proxy :: Proxy rank) <> " of " <> showSuit (Proxy :: Proxy suit)
 ```
 
-Now we can create a sample card:
+Now we can create an example card:
 
 ``` {.sourceCode .literate .haskell}
 -- | example card
@@ -284,7 +290,7 @@ type family ToBool a where
    ToBool (Equal x y) = False
 ```
 
-Note that this is all type-level calculations, so we could have used
+Note that these are all type-level calculations, so we could have used
 `'True` and `'False` for clarity.
 
 Next we are going to create a type-level function which calculates the
@@ -329,41 +335,57 @@ elements of a type-level list are unique or not.
 --  type level: check if all elements in a type level list are unique
 ------------------------------------------------------------------------
 
-type family IsUnique (cards :: [k]) where
+type family IsUnique (list :: [k]) where
    IsUnique '[] = True
    IsUnique (c ': cs) = ToBool (And (Not (IsElem c cs)) (IsUnique cs))
+```
+
+``` {.sourceCode .literate .haskell}
+------------------------------------------------------------------------
+--  type level: check if all elements in the list are cards
+------------------------------------------------------------------------
+```
+
+``` {.sourceCode .literate .haskell}
+type family IsCards (list :: [*]) where
+    IsCards '[] = True
+    IsCards (Card r s ': cs) = IsCards cs
+    IsCards k = False
 ```
 
 Now we have all the pieces required to create a set of cards:
 
 ``` {.sourceCode .literate .haskell}
+
 ------------------------------------------------------------------------
 --  Cards
 ------------------------------------------------------------------------
 
-data Cards :: Nat -> [card] -> * where
+data Cards :: Nat -> [*] -> * where
     -- ensure that there are a specific number of a cards and that each card appears only once
-   Cards :: (Length cards :~: (n :: Nat)) -> (IsUnique cards :~: True) -> Cards n cards
+   Cards :: ((IsCards cards) :~: True) -> (Length cards :~: (n :: Nat)) -> (IsUnique cards :~: True) -> Cards n cards
 
 
-instance Show (Cards (n :: Nat) (cs :: [k])) where
-    show (Cards Refl Refl) = "Cards Refl Refl"
+instance Show (Cards (n :: Nat) (cs :: [*])) where
+    show (Cards Refl Refl Refl) = "Cards Refl Refl Refl"
 ```
 
-The `Cards` type constructor takes to parameters, the first is the
+The `Cards` type constructor takes two parameters, the first is the
 number of cards in the list, and the second is the list of unique cards.
 
-The `Cards` data constructor also takes two values, the first is the
-proof that the length of the list is equal to the number of cards. The
-second value is proof that the cards in the list are unique.
+The `Cards` data constructor takes three values. The first value is the
+proof that the list only contains cards. The second value is the proof
+that the length of the list is equal to the number of cards we are
+supposed to have. The third value is proof that the cards in the list
+are unique.
 
 We can create a little helper function for generating a specific set of
 cards:
 
 ``` {.sourceCode .literate .haskell}
 -- | helper function to make 'Cards'
-mkCards :: (Length cards ~ (n :: Nat), IsUnique cards ~ True) => Cards n cards
-mkCards = Cards Refl Refl
+mkCards :: (IsCards cards ~ True, Length cards ~ (n :: Nat), IsUnique cards ~ True) => Cards n cards
+mkCards = Cards Refl Refl Refl
 ```
 
 We can also create a helper function which adds a new cards to an
@@ -373,7 +395,7 @@ existing set of cards:
 -- | add a card to a set of cards
 --
 -- card must not already be in the deck
-addCard :: ((1 + n) ~ (1 + Length cards), IsUnique (Card rank suit ': cards) ~ True) =>
+addCard :: ((1 + n) ~ (1 + Length cards), IsUnique (Card rank suit ': cards) ~ True, IsCards cards ~ True) =>
            Card rank suit
         -> Cards n cards
         -> Cards (1 + n) (Card rank suit ': cards)
@@ -389,11 +411,11 @@ So let's look at this in action now:
 
 -- | an empty set of cards
 cards0 :: Cards 0 '[]
-cards0 = Cards Refl Refl
+cards0 = Cards Refl Refl Refl
 
 -- | just the ace of spaces
 cards1 :: Cards 1 '[Card Ace Spades]
-cards1 = Cards Refl Refl
+cards1 = Cards Refl Refl Refl
 
 -- | the ace of spaces and the ace of diamonds
 cards2 :: Cards 2 '[Card Ace Spades, Card Ace Diamonds]
@@ -403,9 +425,27 @@ cards2 = mkCards -- use mkCards for variety sake
 Note that the value of all these cards are the same, only the types are
 different.
 
+If we try to stick a non-Card value in the list:
+
+``` {.haskell}
+-- | the ace of spaces and the ace of diamonds
+cards3 :: Cards 2 '[Card Ace Spades, Card Ace Diamonds, Int]
+cards3 = mkCards -- use mkCards for variety sake
+```
+
+we will get the error:
+
+        Couldn't match type ‘'False’ with ‘'True’
+        Expected type: 'True
+          Actual type: IsCards
+                         '[Card 'Ace 'Spades, Card 'Ace 'Diamonds, Int]
+        In the expression: mkCards
+        In an equation for ‘cards3’: cards3 = mkCards
+
 Sometimes we might actually want a value. Perhaps we need to store the
-cards in a database or serialize them to JSON or something else. We can
-define a simple card type as follows:
+cards in a database or serialize them to JSON or something else. Or
+maybe we just want to through type safety out the window. We can define
+a simple card type as follows:
 
 ``` {.sourceCode .literate .haskell}
 ------------------------------------------------------------------------
@@ -427,7 +467,8 @@ We can easily convert a `Card` to a `SampleCard` using our `rankVal` and
 toSimpleCard :: forall rank suit. (RankVal rank, SuitVal suit) =>
                 Card rank suit
              -> SimpleCard
-toSimpleCard _ = SimpleCard (rankVal (Proxy :: Proxy rank)) (suitVal (Proxy :: Proxy suit))
+toSimpleCard _ =
+    SimpleCard (rankVal (Proxy :: Proxy rank)) (suitVal (Proxy :: Proxy suit))
 ```
 
 Of course, we also want to convert a `Cards` to `[SimpleCard]`.
@@ -463,9 +504,11 @@ instance ToSimpleCards (Cards 0 '[]) where
 And the recursive case:
 
 ``` {.sourceCode .literate .haskell}
-instance forall rank suit n cs. (RankVal rank, SuitVal suit, IsUnique cs ~ True, Length cs ~ (n - 1), ToSimpleCards (Cards (n - 1) cs)) =>
+instance forall rank suit n cs. (RankVal rank, SuitVal suit, IsCards cs ~ True, IsUnique cs ~ True
+                                , Length cs ~ (n - 1), ToSimpleCards (Cards (n - 1) cs)) =>
     ToSimpleCards (Cards n ((Card rank suit) ': cs)) where
-   toSimpleCards _ = toSimpleCard (MkCard :: Card rank suit) : toSimpleCards (mkCards :: Cards (n - 1) cs)
+   toSimpleCards _ = toSimpleCard (MkCard :: Card rank suit)
+                   : toSimpleCards (mkCards :: Cards (n - 1) cs)
 ```
 
 While we have a lot more noise, we can see our classic recursive
@@ -487,7 +530,7 @@ type family Append (a :: [k]) (b :: [k]) where
     Append (a ': as) bs = a ': (Append as bs)
 ```
 
-And new we can create our cartesian product card generator:
+And now we can create our cartesian product generator:
 
 ``` {.sourceCode .literate .haskell}
 type family GenCards (r :: [Rank]) (s :: [Suit]) where
@@ -537,3 +580,13 @@ some subset of the deck. Note that although we did not explicitly limit
 the number of the cards in the deck to being 52 or less, we got that
 'for free'. Because we insist on each card being unique, there is simply
 no way to generate a 53rd card.
+
+The implementation here is probably not the most efficient.
+Additionally, I may have recreated some functions that already exist
+elsewhere in `base` but have escaped my seacrhing. If you have
+improvements, please submit a pull request.
+
+And, believe it or not, this code could be more general. For example,
+the `Cards` type is basically a vector of unique values. The first
+argument to the `Cards` constructor forces the elements to be cards, but
+that could be made for flexible.
