@@ -363,7 +363,8 @@ Now we have all the pieces required to create a set of cards:
 
 data Cards :: Nat -> [*] -> * where
     -- ensure that there are a specific number of a cards and that each card appears only once
-   Cards :: ((IsCards cards) :~: True) -> (Length cards :~: (n :: Nat)) -> (IsUnique cards :~: True) -> Cards n cards
+   Cards :: ((IsCards cards) :~: True) -> (Length cards :~: (n :: Nat))
+         -> (IsUnique cards :~: True) -> Cards n cards
 
 
 instance Show (Cards (n :: Nat) (cs :: [*])) where
@@ -384,7 +385,8 @@ cards:
 
 ``` {.sourceCode .literate .haskell}
 -- | helper function to make 'Cards'
-mkCards :: (IsCards cards ~ True, Length cards ~ (n :: Nat), IsUnique cards ~ True) => Cards n cards
+mkCards :: (IsCards cards ~ True, Length cards ~ (n :: Nat), IsUnique cards ~ True) =>
+           Cards n cards
 mkCards = Cards Refl Refl Refl
 ```
 
@@ -395,7 +397,8 @@ existing set of cards:
 -- | add a card to a set of cards
 --
 -- card must not already be in the deck
-addCard :: ((1 + n) ~ (1 + Length cards), IsUnique (Card rank suit ': cards) ~ True, IsCards cards ~ True) =>
+addCard :: ((1 + n) ~ (1 + Length cards), IsUnique (Card rank suit ': cards) ~ True
+           , IsCards cards ~ True) =>
            Card rank suit
         -> Cards n cards
         -> Cards (1 + n) (Card rank suit ': cards)
@@ -504,8 +507,10 @@ instance ToSimpleCards (Cards 0 '[]) where
 And the recursive case:
 
 ``` {.sourceCode .literate .haskell}
-instance forall rank suit n cs. (RankVal rank, SuitVal suit, IsCards cs ~ True, IsUnique cs ~ True
-                                , Length cs ~ (n - 1), ToSimpleCards (Cards (n - 1) cs)) =>
+instance forall rank suit n cs. (RankVal rank, SuitVal suit, IsCards cs ~ True
+                                , IsUnique cs ~ True
+                                , Length cs ~ (n - 1)
+                                , ToSimpleCards (Cards (n - 1) cs)) =>
     ToSimpleCards (Cards n ((Card rank suit) ': cs)) where
    toSimpleCards _ = toSimpleCard (MkCard :: Card rank suit)
                    : toSimpleCards (mkCards :: Cards (n - 1) cs)
@@ -536,7 +541,8 @@ And now we can create our cartesian product generator:
 type family GenCards (r :: [Rank]) (s :: [Suit]) where
     GenCards r '[] = '[]
     GenCards '[] s = '[]
-    GenCards (r ': rr) (s ': ss)  = Append ((Card r s) ': GenCards (r ': '[]) ss) (GenCards rr (s ': ss))
+    GenCards (r ': rr) (s ': ss) =
+        Append ((Card r s) ': GenCards (r ': '[]) ss) (GenCards rr (s ': ss))
 ```
 
 And for our grand finally, the deck of cards:
